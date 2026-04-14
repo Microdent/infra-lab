@@ -1,0 +1,113 @@
+---
+# PostgreSQL StatefulSet（使用 GKE 默认 StorageClass = GCP Persistent Disk）
+# 对比 K3s（Day 12）使用 local-path，GKE 使用网络存储 pd-standard
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-gke
+  namespace: default
+spec:
+  serviceName: postgres-gke
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-gke
+  template:
+    metadata:
+      labels:
+        app: postgres-gke
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_DB
+              value: memos
+            - name: POSTGRES_USER
+              value: memos
+            - name: POSTGRES_PASSWORD
+              value: memos_lab_pass
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: pg-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+  volumeClaimTemplates:
+    - metadata:
+        name: pg-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # GKE 默认 StorageClass = pd-balanced（Google 持久化磁盘）
+        # 对比 K3s 的 local-path：网络存储，Pod 可以调度到任意节点
+        storageClassName: ""
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-gke
+  namespace: default
+spec:
+  selector:
+    app: postgres-gke
+  clusterIP: None
+  ports:
+    - port: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memos-gke
+  namespace: default
+  labels:
+    app: memos-gke
+    lab: d14
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memos-gke
+  template:
+    metadata:
+      labels:
+        app: memos-gke
+    spec:
+      containers:
+        - name: memos
+          image: ghcr.io/usememos/memos:latest
+          env:
+            - name: MEMOS_DRIVER
+              value: postgres
+            - name: MEMOS_DSN
+              value: "postgresql://memos:memos_lab_pass@postgres-gke:5432/memos?sslmode=disable"
+          ports:
+            - containerPort: 5230
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memos-gke
+  namespace: default
+spec:
+  type: LoadBalancer
+  selector:
+    app: memos-gke
+  ports:
+    - port: 3000
+      targetPort: 5230

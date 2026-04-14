@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: whoami
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    # !! 替换为你的 GitHub 仓库地址 !!
+    repoURL: https://github.com/YOUR_GITHUB_USERNAME/infra-lab.git
+    targetRevision: HEAD
+    path: day12-13-k3s/manifests
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+
+  syncPolicy:
+    automated:
+      # 自动同步：Git 状态改变时自动 Apply
+      prune: true        # 删除 Git 中不存在的资源
+      selfHeal: true     # 集群状态偏离 Git 时自动修正
+    syncOptions:
+      - CreateNamespace=true

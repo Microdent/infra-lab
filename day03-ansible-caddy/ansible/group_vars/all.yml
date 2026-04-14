@@ -1,0 +1,33 @@
+---
+# =============================================================================
+# Day 3 — 全局变量
+# 执行 playbook 前必须修改 domain
+# =============================================================================
+
+# !! 必填 !! 将此改为你的真实域名
+# DNS A 记录需指向 VM 的外部 IP（create.sh 运行后获得）
+domain: "lab.yourdomain.com"
+
+# 各子域名（Caddy 反代用）
+whoami_subdomain: "whoami.{{ domain }}"
+memos_subdomain: "memos.{{ domain }}"
+uptime_subdomain: "uptime.{{ domain }}"
+
+# 应用端口（容器内部监听，Caddy 反代到这些端口）
+whoami_port: 8080
+memos_port: 3000
+uptime_kuma_port: 3001
+
+# 镜像版本
+whoami_image: "traefik/whoami"
+memos_image: "ghcr.io/usememos/memos:latest"
+postgres_image: "postgres:16-alpine"
+uptime_kuma_image: "louislam/uptime-kuma:1"
+
+# Postgres 配置
+postgres_db: "memos"
+postgres_user: "memos"
+postgres_password: "memos_secure_pass_change_me"
+
+# 应用数据目录（持久化挂载）
+app_data_dir: "/opt/lab-data"

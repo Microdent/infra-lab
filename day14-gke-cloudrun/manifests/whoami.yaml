@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whoami-gke
+  namespace: default
+  labels:
+    app: whoami-gke
+    lab: d14
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: whoami-gke
+  template:
+    metadata:
+      labels:
+        app: whoami-gke
+    spec:
+      containers:
+        - name: whoami
+          image: traefik/whoami
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              # GKE Autopilot 要求明确指定 requests
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+---
+# LoadBalancer Service — GKE 自动创建 GCP L4 负载均衡器
+apiVersion: v1
+kind: Service
+metadata:
+  name: whoami-gke
+  namespace: default
+  annotations:
+    # 保留 IP 1 小时（实验结束尽快删除，IP 计费）
+    cloud.google.com/load-balancer-type: "External"
+spec:
+  type: LoadBalancer
+  selector:
+    app: whoami-gke
+  ports:
+    - port: 80
+      targetPort: 80

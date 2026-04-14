@@ -1,0 +1,133 @@
+---
+# PostgreSQL StatefulSet（持久化存储 — 使用 K3s 内置 local-path provisioner）
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: default
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - name: POSTGRES_DB
+              value: memos
+            - name: POSTGRES_USER
+              value: memos
+            - name: POSTGRES_PASSWORD
+              value: memos_lab_pass
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: pg-data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+  volumeClaimTemplates:
+    - metadata:
+        name: pg-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path   # K3s 内置 provisioner
+        resources:
+          requests:
+            storage: 5Gi
+---
+# PostgreSQL 内部 Service（Headless）
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: default
+spec:
+  selector:
+    app: postgres
+  clusterIP: None
+  ports:
+    - port: 5432
+---
+# Memos Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memos
+  namespace: default
+  labels:
+    app: memos
+    lab: d12
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memos
+  template:
+    metadata:
+      labels:
+        app: memos
+    spec:
+      containers:
+        - name: memos
+          image: ghcr.io/usememos/memos:latest
+          env:
+            - name: MEMOS_DRIVER
+              value: postgres
+            - name: MEMOS_DSN
+              value: "postgresql://memos:memos_lab_pass@postgres:5432/memos?sslmode=disable"
+          ports:
+            - containerPort: 5230
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+# Memos Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: memos
+  namespace: default
+spec:
+  selector:
+    app: memos
+  ports:
+    - port: 3000
+      targetPort: 5230
+---
+# Memos Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: memos
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: traefik
+spec:
+  rules:
+    - host: "memos.lab.yourdomain.com"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: memos
+                port:
+                  number: 3000

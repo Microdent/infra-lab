@@ -1,0 +1,5 @@
+config:
+  # 替换为你的真实 GCP 项目 ID
+  gcp:project: YOUR_PROJECT_ID_HERE
+  gcp:zone: us-central1-b
+  gcp:region: us-central1

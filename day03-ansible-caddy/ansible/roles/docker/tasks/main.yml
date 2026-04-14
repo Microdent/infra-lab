@@ -1,0 +1,57 @@
+---
+- name: 安装依赖包
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: true
+
+- name: 创建 keyrings 目录
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: 下载 Docker GPG key
+  ansible.builtin.shell:
+    cmd: curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    creates: /etc/apt/keyrings/docker.gpg
+
+- name: 设置 Docker GPG key 权限
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/docker.gpg
+    mode: "0644"
+
+- name: 添加 Docker apt 源
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg]
+      https://download.docker.com/linux/debian
+      {{ ansible_distribution_release }} stable
+    filename: docker
+    state: present
+
+- name: 安装 Docker CE 和 Compose 插件
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: 启动并启用 Docker 服务
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: 将用户加入 docker 组
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true

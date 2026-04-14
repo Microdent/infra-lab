@@ -1,0 +1,19 @@
+# =============================================================================
+# Caddyfile — 由 Ansible 模板生成
+# Caddy 自动管理 Let's Encrypt 证书，HTTP 自动重定向到 HTTPS
+# =============================================================================
+
+# whoami — 测试反代
+{{ whoami_subdomain }} {
+    reverse_proxy localhost:{{ whoami_port }}
+}
+
+# memos — 笔记应用
+{{ memos_subdomain }} {
+    reverse_proxy localhost:{{ memos_port }}
+}
+
+# uptime-kuma — 监控面板
+{{ uptime_subdomain }} {
+    reverse_proxy localhost:{{ uptime_kuma_port }}
+}

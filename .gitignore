@@ -1,0 +1,49 @@
+# Terraform / OpenTofu
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
+
+# Pulumi
+.pulumi/
+Pulumi.*.yaml.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# Node.js
+node_modules/
+package-lock.json
+yarn.lock
+
+# Ansible（动态生成的 inventory）
+day03-ansible-caddy/ansible/inventory.ini
+*.retry
+
+# SSH / 密钥
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+google_compute_engine*
+
+# 日志
+*.log
+
+# 编辑器
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 环境变量
+.env
+.env.local

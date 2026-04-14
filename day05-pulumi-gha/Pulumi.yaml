@@ -1,0 +1,3 @@
+name: infra-lab-day05
+runtime: python
+description: "Day 5 — Pulumi Python + GitHub Actions 部署 GCE VM"

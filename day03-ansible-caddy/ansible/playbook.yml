@@ -1,0 +1,19 @@
+---
+# =============================================================================
+# Day 3 — 主 playbook
+# 三个角色按顺序执行：docker → app-stack → caddy
+# =============================================================================
+- name: 配置单机 Docker + Compose + Caddy 标准形态
+  hosts: webserver
+  become: true
+  gather_facts: true
+
+  roles:
+    - role: docker
+      tags: [docker]
+
+    - role: app-stack
+      tags: [app, stack]
+
+    - role: caddy
+      tags: [caddy]

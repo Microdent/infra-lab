@@ -1,0 +1,61 @@
+version: "3.8"
+
+services:
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    labels:
+      - "lab.day=d03"
+      - "lab.service=whoami"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: memos
+      POSTGRES_USER: memos
+      POSTGRES_PASSWORD: memos_secure_pass_change_me
+    volumes:
+      - /opt/lab-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    labels:
+      - "lab.day=d03"
+      - "lab.service=postgres"
+
+  memos:
+    image: ghcr.io/usememos/memos:latest
+    container_name: memos
+    ports:
+      - "3000:5230"
+    restart: unless-stopped
+    environment:
+      MEMOS_DRIVER: postgres
+      MEMOS_DSN: "postgresql://memos:memos_secure_pass_change_me@postgres:5432/memos?sslmode=disable"
+    volumes:
+      - /opt/lab-data/memos:/var/opt/memos
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - "lab.day=d03"
+      - "lab.service=memos"
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+    volumes:
+      - /opt/lab-data/uptime-kuma:/app/data
+    labels:
+      - "lab.day=d03"
+      - "lab.service=uptime-kuma"

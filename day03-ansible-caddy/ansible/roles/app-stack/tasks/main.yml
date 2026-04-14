@@ -1,0 +1,57 @@
+---
+# =============================================================================
+# app-stack role — 部署 Docker Compose 应用栈
+# 包含：whoami + memos + postgres + uptime-kuma
+# =============================================================================
+
+- name: 创建应用数据目录
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  loop:
+    - "{{ app_data_dir }}"
+    - "{{ app_data_dir }}/postgres"
+    - "{{ app_data_dir }}/memos"
+    - "{{ app_data_dir }}/uptime-kuma"
+    - /opt/lab-compose
+
+- name: 上传 docker-compose.yml
+  ansible.builtin.copy:
+    src: docker-compose.yml
+    dest: /opt/lab-compose/docker-compose.yml
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+- name: 启动 Docker Compose 栈
+  ansible.builtin.shell:
+    cmd: docker compose up -d --pull always
+    chdir: /opt/lab-compose
+  register: compose_output
+  changed_when: "'Started' in compose_output.stdout or 'Created' in compose_output.stdout"
+
+- name: 等待 whoami / uptime-kuma 就绪
+  ansible.builtin.wait_for:
+    port: "{{ item }}"
+    host: localhost
+    timeout: 60
+  loop:
+    - "{{ whoami_port }}"
+    - "{{ uptime_kuma_port }}"
+
+- name: 等待 memos 就绪（依赖 postgres 健康检查，需要更长时间）
+  ansible.builtin.wait_for:
+    port: "{{ memos_port }}"
+    host: localhost
+    timeout: 180
+
+- name: 验证服务响应
+  ansible.builtin.uri:
+    url: "http://localhost:{{ whoami_port }}"
+    status_code: 200
+  register: whoami_check
+  retries: 5
+  delay: 3

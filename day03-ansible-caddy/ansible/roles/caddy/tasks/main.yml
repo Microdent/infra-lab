@@ -1,0 +1,59 @@
+---
+- name: 安装 Caddy 依赖
+  ansible.builtin.apt:
+    name:
+      - debian-keyring
+      - debian-archive-keyring
+      - apt-transport-https
+      - curl
+      - gnupg
+    state: present
+
+- name: 创建 keyrings 目录
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: 下载 Caddy GPG key
+  ansible.builtin.shell:
+    cmd: curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key | gpg --dearmor -o /etc/apt/keyrings/caddy-stable.gpg
+    creates: /etc/apt/keyrings/caddy-stable.gpg
+
+- name: 设置 Caddy GPG key 权限
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/caddy-stable.gpg
+    mode: "0644"
+
+- name: 添加 Caddy apt 源
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [signed-by=/etc/apt/keyrings/caddy-stable.gpg]
+      https://dl.cloudsmith.io/public/caddy/stable/deb/debian
+      any-version main
+    filename: caddy-stable
+    state: present
+
+- name: 安装 Caddy
+  ansible.builtin.apt:
+    name: caddy
+    state: present
+    update_cache: true
+
+- name: 生成 Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload caddy
+
+- name: 启动并启用 Caddy
+  ansible.builtin.systemd:
+    name: caddy
+    state: started
+    enabled: true
+
+- name: 触发 Caddy 重载
+  ansible.builtin.meta: flush_handlers

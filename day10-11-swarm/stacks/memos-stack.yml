@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: memos
+      POSTGRES_USER: memos
+      POSTGRES_PASSWORD: memos_pass_lab
+    volumes:
+      - memos-pg-data:/var/lib/postgresql/data
+    networks:
+      - memos-net
+    deploy:
+      replicas: 1
+      placement:
+        # 数据库固定到 manager（避免 Spot Worker 被回收导致数据丢失）
+        constraints:
+          - node.labels.role == manager
+      restart_policy:
+        condition: on-failure
+
+  memos:
+    image: ghcr.io/usememos/memos:latest
+    ports:
+      - "3000:5230"
+    environment:
+      MEMOS_DRIVER: postgres
+      MEMOS_DSN: "postgresql://memos:memos_pass_lab@postgres:5432/memos?sslmode=disable"
+    networks:
+      - memos-net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.role == manager
+      restart_policy:
+        condition: on-failure
+    depends_on:
+      - postgres
+
+volumes:
+  memos-pg-data:
+    driver: local
+
+networks:
+  memos-net:
+    driver: overlay

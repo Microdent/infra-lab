@@ -1,0 +1,66 @@
+#cloud-config
+# =============================================================================
+# Day 2 — cloud-init 配置
+# 在 Container-Optimized OS 上通过 cloud-init 启动 Docker 容器
+#
+# COS 的 cloud-init 支持子集（不是完整的 cloud-init）：
+#   - write_files：写入文件
+#   - runcmd：执行命令（在 /bin/sh 下运行）
+#   - users：配置用户（受限）
+# COS 不支持：package 安装（只读 rootfs）、apt/yum 模块
+# =============================================================================
+
+write_files:
+  # 写一个 docker-compose 文件到可写目录
+  - path: /home/chronos/compose/docker-compose.yml
+    permissions: "0644"
+    content: |
+      version: "3.8"
+      services:
+        whoami:
+          image: traefik/whoami
+          container_name: whoami
+          ports:
+            - "8080:80"
+          environment:
+            - WHOAMI_NAME=day02-cos-vm
+          restart: unless-stopped
+
+        uptime-kuma:
+          image: louislam/uptime-kuma:1
+          container_name: uptime-kuma
+          ports:
+            - "3001:3001"
+          volumes:
+            - uptime-kuma-data:/app/data
+          restart: unless-stopped
+
+      volumes:
+        uptime-kuma-data:
+
+runcmd:
+  # COS 内置 Docker，但没有 docker-compose，用 docker 原生命令启动
+  # 先拉取镜像（避免后续命令超时）
+  - docker pull traefik/whoami
+  - docker pull louislam/uptime-kuma:1
+
+  # 启动 whoami 容器
+  - |
+    docker run -d \
+      --name whoami \
+      --restart unless-stopped \
+      -p 8080:80 \
+      -e WHOAMI_NAME="day02-cos-vm" \
+      traefik/whoami
+
+  # 启动 uptime-kuma 容器
+  - |
+    docker run -d \
+      --name uptime-kuma \
+      --restart unless-stopped \
+      -p 3001:3001 \
+      -v uptime-kuma-data:/app/data \
+      louislam/uptime-kuma:1
+
+  # 写入完成标记到 serial console
+  - echo "CLOUD-INIT COMPLETE - containers started" > /dev/console
