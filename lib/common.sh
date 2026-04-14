@@ -81,7 +81,7 @@ wait_for_ssh() {
     fi
     echo -n "."
     sleep 5
-    ((attempt++))
+    attempt=$((attempt + 1))
   done
 
   echo ""
